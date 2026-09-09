@@ -90,17 +90,61 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("상관계수 (r)", f"{corr:.3f}")
-with col2:
-    st.metric("회귀 직선 기울기", f"{slope:.4f} ℃/년")
+st.metric("상관계수 (r)", f"{corr:.3f}")
 
 st.info(
     f"📌 회귀 직선은 **{n_years}개 연도**의 자료로 만들어졌으며, "
     f"기간은 **{start_year}년 ~ {end_year}년**입니다. "
     f"(기준 기간: {CUTOFF_YEAR}년까지, 연 관측일수 {MIN_OBS_PER_YEAR}일 이상)"
 )
+
+st.divider()
+
+# ---- 100년당 기온 상승 비교: 전체 기간 vs 최근 20년 ----
+RECENT_YEARS = 20
+recent = yearly.tail(RECENT_YEARS)
+recent_start = int(recent["연도"].min())
+recent_end = int(recent["연도"].max())
+recent_n = len(recent)
+
+warming_full_per_100y = slope * 100
+
+if recent_n >= 2:
+    r_years = recent["연도"].values.astype(float)
+    r_temps = recent["연평균기온"].values.astype(float)
+    slope_recent, intercept_recent = np.polyfit(r_years, r_temps, 1)
+    warming_recent_per_100y = slope_recent * 100
+else:
+    slope_recent, intercept_recent = None, None
+    warming_recent_per_100y = None
+
+st.subheader("100년당 기온 상승 비교")
+comp1, comp2 = st.columns(2)
+with comp1:
+    st.markdown(
+        f"""
+        <div style="text-align:center; padding: 15px; border-radius:10px; background-color:#f1f3f5;">
+            <div style="font-size:18px; color:gray;">전체 기간 ({start_year}~{end_year}년, {n_years}개 연도)</div>
+            <div style="font-size:52px; font-weight:bold; color:#1971c2;">{warming_full_per_100y:+.2f} ℃</div>
+            <div style="font-size:16px; color:gray;">/ 100년</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with comp2:
+    if warming_recent_per_100y is not None:
+        st.markdown(
+            f"""
+            <div style="text-align:center; padding: 15px; border-radius:10px; background-color:#fff0f0;">
+                <div style="font-size:18px; color:gray;">최근 {recent_n}개 연도 ({recent_start}~{recent_end}년)</div>
+                <div style="font-size:52px; font-weight:bold; color:#e03131;">{warming_recent_per_100y:+.2f} ℃</div>
+                <div style="font-size:16px; color:gray;">/ 100년</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.warning("최근 구간의 자료가 부족해 기울기를 계산할 수 없습니다.")
 
 st.divider()
 
